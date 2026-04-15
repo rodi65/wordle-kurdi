@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ku" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wordle Kurdî</title>
+<link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&family=Exo+2:wght@300;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d14;
+    --surface: #16161f;
+    --border: #2a2a3d;
+    --gold: #f0c060;
+    --gold-dim: #a07828;
+    --green: #4caf7d;
+    --yellow: #e8b84b;
+    --grey: #3a3a4d;
+    --text: #e8e0d0;
+    --text-dim: #7a7590;
+    --red: #e05555;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* background pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(240,192,96,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 80% 90%, rgba(76,175,125,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 16px 0;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .title-ku {
+    font-family: 'Scheherazade New', serif;
+    font-size: 2.2rem;
+    color: var(--gold);
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+
+  .title-sub {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .divider {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 10px auto;
+  }
+
+  #message-area {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    color: var(--gold);
+    font-weight: 500;
+    z-index: 1;
+    position: relative;
+  }
+
+  /* GRID */
+  #grid {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    gap: 5px;
+    padding: 10px 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+  }
+
+  .cell {
+    width: 54px;
+    height: 54px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    transition: border-color 0.1s;
+    position: relative;
+    background: var(--surface);
+    letter-spacing: 0;
+  }
+
+  .cell.filled {
+    border-color: #4a4a60;
+    animation: pop 0.1s ease;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+
+  .cell.flip {
+    animation: flip 0.5s ease forwards;
+  }
+
+  @keyframes flip {
+    0%   { transform: rotateX(0deg); }
+    50%  { transform: rotateX(90deg); background: var(--surface); }
+    100% { transform: rotateX(0deg); }
+  }
+
+  .cell.correct  { background: var(--green);  border-color: var(--green);  color: #fff; }
+  .cell.present  { background: var(--yellow); border-color: var(--yellow); color: #fff; }
+  .cell.absent   { background: var(--grey);   border-color: var(--grey);   color: var(--text-dim); }
+
+  .cell.shake { animation: shake 0.4s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  /* KEYBOARD */
+  #keyboard {
+    width: 100%;
+    max-width: 480px;
+    padding: 8px 6px 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .kb-row {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+
+  .key {
+    height: 50px;
+    min-width: 34px;
+    padding: 0 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+
+  .key:active { transform: scale(0.93); }
+  .key.wide { min-width: 54px; font-size: 0.7rem; letter-spacing: 0.5px; }
+  .key.correct { background: var(--green); border-color: var(--green); color: #fff; }
+  .key.present { background: var(--yellow); border-color: var(--yellow); color: #fff; }
+  .key.absent  { background: #222230; border-color: #222230; color: var(--text-dim); }
+
+  /* MODAL */
+  #modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  #modal.show { display: flex; }
+
+  .modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 28px;
+    text-align: center;
+    max-width: 320px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 0 60px rgba(240,192,96,0.1);
+  }
+
+  .modal-box h2 {
+    font-size: 1.4rem;
+    color: var(--gold);
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+  }
+
+  .modal-box .answer-reveal {
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--text);
+    margin: 16px 0;
+    font-family: 'Scheherazade New', serif;
+  }
+
+  .modal-box p {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .btn-restart {
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+    color: #0d0d14;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 28px;
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: opacity 0.2s;
+  }
+  .btn-restart:hover { opacity: 0.85; }
+
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .stat { text-align: center; }
+  .stat-num { font-size: 1.6rem; font-weight: 900; color: var(--gold); }
+  .stat-lbl { font-size: 0.65rem; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+
+  .meaning-tag {
+    display: inline-block;
+    background: rgba(240,192,96,0.1);
+    border: 1px solid rgba(240,192,96,0.25);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    color: var(--gold);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-ku">وردلێ کوردی</div>
+  <div class="title-sub">Wordle Kurdî · 5 Tîp</div>
+  <div class="divider"></div>
+</header>
+
+<div id="message-area"></div>
+
+<div id="grid"></div>
+
+<div id="keyboard">
+  <div class="kb-row" id="kb-row-1"></div>
+  <div class="kb-row" id="kb-row-2"></div>
+  <div class="kb-row" id="kb-row-3"></div>
+</div>
+
+<div id="modal">
+  <div class="modal-box">
+    <h2 id="modal-title">BRAVO!</h2>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-num" id="stat-wins">0</div><div class="stat-lbl">Bravo</div></div>
+      <div class="stat"><div class="stat-num" id="stat-streak">0</div><div class="stat-lbl">Zincîr</div></div>
+      <div class="stat"><div class="stat-num" id="stat-played">0</div><div class="stat-lbl">Lîstik</div></div>
+    </div>
+    <div class="meaning-tag" id="modal-meaning"></div>
+    <div class="answer-reveal" id="modal-answer"></div>
+    <p id="modal-desc"></p>
+    <button class="btn-restart" onclick="restartGame()">DÎSA BILÎZE ↺</button>
+  </div>
+</div>
+
+<script>
+// Kurdish (Kurmanji) 5-letter words with meanings
+const WORDS = [
+  { w: "AVDAN", m: "Avdan - Av dayın / su vermek" },
+  { w: "BERXW", m: "Berxwedan - Direniş" },
+  { w: "ÇIYAN", m: "Çiyan - Dağlar" },
+  { w: "DILXW", m: "Dilxweş - Mutlu, neşeli" },
+  { w: "ERDÊN", m: "Erdên - Topraklar" },
+  { w: "FIRÎN", m: "Firîn - Uçmak" },
+  { w: "GERME", m: "Germe - Sıcaklık, ısınma" },
+  { w: "HEVAL", m: "Heval - Arkadaş, yoldaş" },
+  { w: "ÎSTEH", m: "Îsteh - İhtiyaç" },
+  { w: "JIYAN", m: "Jiyan - Yaşam, hayat" },
+  { w: "KÇÎKA", m: "Kçîka - Kız çocuğu" },
+  { w: "LEHÎY", m: "Lehîya - Sel, taşkın" },
+  { w: "MALBAT", m: "Malbat - Aile" },
+  { w: "NERIN", m: "Nerîn - Bakmak, görmek" },
+  { w: "PELÊN", m: "Pelên - Yapraklar" },
+  { w: "RABEN", m: "Raben - Kalkmak, yükselmek" },
+  { w: "SERBZ", m: "Serbest - Özgür" },
+  { w: "TIŞTÊ", m: "Tiştê - Şeyler, nesneler" },
+  { w: "WERAN", m: "Weran - Harap, viran" },
+  { w: "XWENDN", m: "Xwendin - Okumak" },
+  { w: "ZIMAN", m: "Ziman - Dil, lisan" },
+  { w: "AZADÎ", m: "Azadî - Özgürlük" },
+  { w: "BARAN", m: "Baran - Yağmur" },
+  { w: "ÇAVÊN", m: "Çavên - Gözler" },
+  { w: "DESTAN", m: "Destan - Destan, hikâye" },
+  { w: "EVÎNA", m: "Evîna - Aşk, sevgi" },
+  { w: "FELAT", m: "Felat - Kurtuluş" },
+  { w: "GIRAN", m: "Giran - Ağır" },
+  { w: "HEWAR", m: "Hewar - Feryat, yardım çağrısı" },
+  { w: "ÎSYAN", m: "Îsyan - İsyan, başkaldırı" },
+  { w: "KEVIR", m: "Kevir - Taş" },
+  { w: "LÊGER", m: "Lêger - Araştırmak" },
+  { w: "MIROV", m: "Mirov - İnsan" },
+  { w: "NEWROZ", m: "Newroz - Nevruz, yeni yıl" },
+  { w: "ORHAN", m: "Orhan - Özel isim" },
+  { w: "PAYÎZ", m: "Payîz - Sonbahar" },
+  { w: "RÊBER", m: "Rêber - Rehber, önder" },
+  { w: "STÊRK", m: "Stêrk - Yıldız" },
+  { w: "TAVÊN", m: "Tavên - Güneşler" },
+  { w: "WARÊN", m: "Warên - Yurtlar, yuvalar" },
+];
+
+// Only keep 5-char words
+const VALID_WORDS = WORDS.filter(x => x.w.length === 5);
+
+// Keyboard layout (Kurmanji Latin)
+const KB = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['ENTER','Z','X','C','V','B','N','M','⌫']
+];
+
+let target, targetMeaning, currentRow, currentCol, board, gameOver;
+let stats = JSON.parse(localStorage.getItem('ku-wordle-stats') || '{"wins":0,"played":0,"streak":0}');
+
+function pickWord() {
+  const idx = Math.floor(Math.random() * VALID_WORDS.length);
+  return VALID_WORDS[idx];
+}
+
+function init() {
+  const picked = pickWord();
+  target = picked.w.toUpperCase();
+  targetMeaning = picked.m;
+  currentRow = 0;
+  currentCol = 0;
+  gameOver = false;
+  board = Array.from({length:6}, () => Array(5).fill(''));
+  buildGrid();
+  buildKeyboard();
+  setMsg('');
+}
+
+function buildGrid() {
+  const g = document.getElementById('grid');
+  g.innerHTML = '';
+  for (let r = 0; r < 6; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.id = `row-${r}`;
+    for (let c = 0; c < 5; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = `cell-${r}-${c}`;
+      row.appendChild(cell);
+    }
+    g.appendChild(row);
+  }
+}
+
+function buildKeyboard() {
+  KB.forEach((row, ri) => {
+    const el = document.getElementById(`kb-row-${ri+1}`);
+    el.innerHTML = '';
+    row.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'key' + (k.length > 1 && k !== '⌫' ? ' wide' : '');
+      btn.textContent = k;
+      btn.id = `key-${k}`;
+      btn.addEventListener('click', () => handleKey(k));
+      el.appendChild(btn);
+    });
+  });
+}
+
+function setMsg(txt, color) {
+  const el = document.getElementById('message-area');
+  el.textContent = txt;
+  el.style.color = color || 'var(--gold)';
+}
+
+function handleKey(k) {
+  if (gameOver) return;
+  if (k === '⌫' || k === 'BACKSPACE') {
+    deleteLetter();
+  } else if (k === 'ENTER') {
+    submitGuess();
+  } else if (/^[A-ZÇÎÛÊŞa-zçîûêş]$/i.test(k)) {
+    addLetter(k.toUpperCase());
+  }
+}
+
+function addLetter(l) {
+  if (currentCol >= 5) return;
+  board[currentRow][currentCol] = l;
+  const cell = document.getElementById(`cell-${currentRow}-${currentCol}`);
+  cell.textContent = l;
+  cell.classList.add('filled');
+  currentCol++;
+}
+
+function deleteLetter() {
+  if (currentCol <= 0) return;
+  currentCol--;
+  board[currentRow][currentCol] = '';
+  const cell = document.getElementById(`cell-${currentRow}-${currentCol}`);
+  cell.textContent = '';
+  cell.classList.remove('filled');
+}
+
+function submitGuess() {
+  if (currentCol < 5) {
+    shakeRow(currentRow);
+    setMsg('5 tîp binivîse!');
+    return;
+  }
+  const guess = board[currentRow].join('');
+  const result = evaluate(guess, target);
+  revealRow(currentRow, result, guess);
+
+  const won = result.every(r => r === 'correct');
+  if (won) {
+    gameOver = true;
+    stats.wins++;
+    stats.played++;
+    stats.streak++;
+    saveStats();
+    setTimeout(() => showModal(true, currentRow + 1), 1800);
+  } else if (currentRow === 5) {
+    gameOver = true;
+    stats.played++;
+    stats.streak = 0;
+    saveStats();
+    setTimeout(() => showModal(false, 0), 1800);
+  }
+  currentRow++;
+  currentCol = 0;
+}
+
+function evaluate(guess, target) {
+  const res = Array(5).fill('absent');
+  const tArr = target.split('');
+  const gArr = guess.split('');
+  const used = Array(5).fill(false);
+
+  // Pass 1: correct
+  gArr.forEach((l, i) => {
+    if (l === tArr[i]) { res[i] = 'correct'; used[i] = true; }
+  });
+  // Pass 2: present
+  gArr.forEach((l, i) => {
+    if (res[i] === 'correct') return;
+    const j = tArr.findIndex((t, ti) => !used[ti] && t === l);
+    if (j !== -1) { res[i] = 'present'; used[j] = true; }
+  });
+  return res;
+}
+
+function revealRow(row, result, guess) {
+  result.forEach((state, c) => {
+    const cell = document.getElementById(`cell-${row}-${c}`);
+    setTimeout(() => {
+      cell.classList.add('flip');
+      setTimeout(() => { cell.classList.add(state); }, 250);
+    }, c * 120);
+
+    // update keyboard
+    const k = guess[c];
+    const keyEl = document.getElementById(`key-${k}`);
+    if (keyEl) {
+      const cur = keyEl.className;
+      if (!cur.includes('correct')) {
+        if (state === 'correct') {
+          keyEl.className = keyEl.className.replace(/present|absent/g, '').trim() + ' correct';
+        } else if (state === 'present' && !cur.includes('present')) {
+          keyEl.className = keyEl.className.replace(/absent/g, '').trim() + ' present';
+        } else if (state === 'absent' && !cur.includes('present') && !cur.includes('correct')) {
+          keyEl.className += ' absent';
+        }
+      }
+    }
+  });
+}
+
+function shakeRow(row) {
+  const rowEl = document.getElementById(`row-${row}`);
+  rowEl.querySelectorAll('.cell').forEach(c => {
+    c.classList.remove('shake');
+    void c.offsetWidth;
+    c.classList.add('shake');
+  });
+}
+
+function showModal(won, tries) {
+  document.getElementById('modal-title').textContent = won
+    ? ['SUPAS! 🌟','BRAVOYÎ! 🎉','ECÊB! ✨','BEDEW! 💫'][Math.min(tries-1,3)]
+    : 'MIXABIN... 😔';
+  document.getElementById('modal-answer').textContent = target;
+  document.getElementById('modal-meaning').textContent = '📖 Wateya peyvê';
+  document.getElementById('modal-desc').textContent = targetMeaning + (won ? `\n\n${tries} hewldanê de dît!` : '\n\nBikaribe tu dîsa biceribîne!');
+  document.getElementById('stat-wins').textContent = stats.wins;
+  document.getElementById('stat-streak').textContent = stats.streak;
+  document.getElementById('stat-played').textContent = stats.played;
+  document.getElementById('modal').classList.add('show');
+}
+
+function restartGame() {
+  document.getElementById('modal').classList.remove('show');
+  init();
+}
+
+function saveStats() {
+  localStorage.setItem('ku-wordle-stats', JSON.stringify(stats));
+}
+
+// Physical keyboard
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey) return;
+  const k = e.key.toUpperCase();
+  if (k === 'ENTER') handleKey('ENTER');
+  else if (k === 'BACKSPACE') handleKey('⌫');
+  else if (/^[A-ZÇÎÛÊŞa-zçîûêş]$/i.test(e.key)) handleKey(k);
+});
+
+init();
+</script>
+</body>
+</html>
